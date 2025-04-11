@@ -51,3 +51,6 @@ https://www.lcd-module.de/eng/pdf/zubehoer/st7036.pdf
 
 - Controler example
 https://docs.rs-online.com/02c9/A700000006657144.pdf
+
+### DFPAYER mini
+https://wiki.dfrobot.com/DFPlayer_Mini_SKU_DFR0299
