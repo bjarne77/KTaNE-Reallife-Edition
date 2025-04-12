@@ -40,6 +40,7 @@ uint8_t strikes = 0;
 char serial_number[9] = {0};
 
 bool found[DEVICE_N] = {0};
+int num_found = 0;
 
 void setup() {
   randomSeed(analogRead(A0));
@@ -63,6 +64,7 @@ void setup() {
       sendCommand(i, STATUS);
       readResponse(i);
       // Init device
+      num_found++;
     }
   }
   mp3_init();
@@ -111,10 +113,17 @@ void loop() {
   static uint8_t new_status;
   new_status = status;
 
+  static uint8_t num_success;
+  num_success = 0;
+
   for(int i = 0; i < DEVICE_N; i++) {
     if(found[i]) {
       sendCommand(i, STATUS);
       const uint8_t module_status = readResponse(i);
+      // Serial.print("Status from Node ");
+      // Serial.print(i);
+      // Serial.print(":  ");
+      // Serial.println(module_status);
 
       if(status == RUNNING && module_status == FAILED) {
         new_status = FAILED;
@@ -127,6 +136,10 @@ void loop() {
           Serial.print("Got new Strike from Device ");
           Serial.println(i);
         }
+      } else if(status == RUNNING && module_status == SUCCESS) {
+        Serial.print("Got Success from Device ");
+        Serial.println(i);
+        num_success++;
       }
     }
   }
@@ -165,6 +178,17 @@ void loop() {
       }
     }
     status = RUNNING;
+  }
+
+  if(status == RUNNING && num_success == num_found) {
+    for(int i = 0; i < DEVICE_N; i++) {
+      if(found[i]) {
+        sendCommand(i, FINISHED);
+        readResponse(i);
+      }
+    }
+    status = FINISHED;
+    // TODO inform the player
   }
   delay(100);
 }

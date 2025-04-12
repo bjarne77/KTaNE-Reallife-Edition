@@ -176,6 +176,9 @@ void requestEvent() {
     case EXPLODED:
       Serial.println("Handle EXPLODED");
       break;
+    case FINISHED:
+      Serial.println("Handle FINISHED");
+      break;
     default:
       Serial.println("Handle undef cmd");
       break;
@@ -231,8 +234,6 @@ void test_button() {
     // Prüfe auf steigende Flanke: LOW -> HIGH
     if (currentState == HIGH && lastButtonState[i] == LOW) {
       checking(buttons[i]);
-      Serial.print("button pressed: ");
-      Serial.println(buttons[i]);
     }
 
     // Speichere den aktuellen Zustand für den nächsten Durchlauf
@@ -286,43 +287,34 @@ Color button2color(const int button) {
   }
 }
 
+int checking(int pressed_button, Color matrix[3][4]) {
+  const auto exprected = matrix[number_of_strikes][sequenz[solved_state]];
+  Serial.print("Expected: ");
+  Serial.print(color2name(exprected));
+  Serial.print(" got: ");
+  Serial.println(color2name(button2color(pressed_button)));
+
+  if(exprected == button2color(pressed_button)) {
+    solved_state++;
+    if(solved_state == 4) {
+      Serial.println("Successful");
+      status = SUCCESS;
+    }
+  } else {
+    solved_state = 0;
+    status = NEW_STRIKE;
+  }
+
+  Serial.print("State: ");
+  Serial.println(solved_state);
+}
+
 int checking(int pressed_button) {
   if(status == RUNNING) {
     if (vowel_in_serial_number) {
-      const auto exprected = matrix_vowel[number_of_strikes][sequenz[solved_state]];
-      Serial.print("Expected: ");
-      Serial.print(color2name(exprected));
-      Serial.print(" got: ");
-      Serial.println(color2name(button2color(pressed_button)));
-
-      if(exprected == button2color(pressed_button)) {
-        solved_state++;
-        if(solved_state == 4) {
-          status == SUCCESS;
-        }
-      } else {
-        solved_state = 0;
-        status = NEW_STRIKE;
-      }
-
-      Serial.print("State: ");
-      Serial.println(solved_state);
+      checking(pressed_button, matrix_vowel);
     } else {
-      const auto exprected = matrix_novowel[number_of_strikes][sequenz[solved_state]];
-      Serial.print("Expected: ");
-      Serial.print(color2name(exprected));
-      Serial.print(" got: ");
-      Serial.println(color2name(button2color(pressed_button)));
-
-      if(exprected == button2color(pressed_button)) {
-        solved_state++;
-      } else {
-        solved_state = 0;
-        status = NEW_STRIKE;
-      }
-
-      Serial.print("State: ");
-      Serial.println(solved_state);
+      checking(pressed_button, matrix_novowel);
     }
   }
 }
