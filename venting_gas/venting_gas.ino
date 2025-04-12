@@ -15,7 +15,19 @@ bool gameOver = false;
 enum QuestionType { VENT_GAS, DETONATE };
 QuestionType currentQuestion;
 
+#include <Arduino.h>
+#include <SPI.h>
+#include "dogm_7036.h"
+
+dogm_7036 DOG;
+
+byte arrow_down[] = {0x04, 0x04, 0x04, 0x04, 0x15, 0x0E, 0x04, 0x00}; //pattern for own defined character
+
+
+
 void setup() {
+  serial_init(); // <-- Display initialisieren
+
   pinMode(YES_BUTTON_PIN, INPUT_PULLUP);
   pinMode(NO_BUTTON_PIN, INPUT_PULLUP);
   
@@ -24,6 +36,18 @@ void setup() {
 
   gameStartTime = millis();
   scheduleNextQuestion();
+}
+
+void displayMessage(const char* line1) {
+  DOG.position(1, 1); // Erste Zeile
+  DOG.string(line1);
+}
+void serial_init(){
+  DOG.initialize(10,0,0,9,4,1,DOGM081);   //SS = 10, 0,0= use Hardware SPI, 9 = RS, 4= RESET, 1 = 5V, EA DOGM081-A (=1 line)
+  DOG.displ_onoff(true);          //turn Display on
+  DOG.cursor_onoff(true);         //turn Curosor blinking on
+
+  DOG.define_char(0, arrow_down); //define own char on memory adress 0
 }
 
 void loop() {
@@ -44,6 +68,10 @@ void loop() {
   if (awaitingResponse && currentTime - lastResponseTime >= 1000) {
     responseCountdown--;
     lastResponseTime = currentTime;
+
+    char buffer[16];
+    sprintf(buffer, "Zeit: %d Sek.", responseCountdown);
+    displayMessage(currentQuestion == VENT_GAS ? "VENT GAS?" : "DETONATE?");
 
     Serial.print("Antwort-Zeit: ");
     Serial.println(responseCountdown);
@@ -72,7 +100,7 @@ void scheduleNextQuestion() {
     return;
   }
 
-  questionCountdown = random(1, min(121, remainingTime + 1)); // max countdown = Restspielzeit
+  questionCountdown = random(1, min(21, remainingTime + 1)); // max countdown = Restspielzeit
   questionActive = false;
   awaitingResponse = false;
 
@@ -87,13 +115,14 @@ void askNewQuestion() {
   responseCountdown = random(20,41);
   lastResponseTime = millis();
 
-  Serial.println("\n⚠️  NEUE FRAGE:");
   if (currentQuestion == VENT_GAS) {
-    Serial.println("VENT GAS?");
+    displayMessage("VENT GAS?  Y / N");
   } else {
-    Serial.println("DETONATE?");
+    displayMessage("DETONATE?  Y / N");
   }
 
+  Serial.println("\n NEUE FRAGE:");
+  Serial.println(currentQuestion == VENT_GAS ? "VENT GAS?" : "DETONATE?");
   Serial.println("Drücke YES oder NO!");
   Serial.print("Antwort-Zeit: ");
   Serial.println(responseCountdown);
@@ -105,30 +134,35 @@ void handleAnswer(bool userSaidYes) {
 
   if (currentQuestion == VENT_GAS) {
     if (userSaidYes) {
-      Serial.println("✅ Richtig (GAS entlüftet).");
+      displayMessage("CORRECT    ");
     } else {
-      Serial.println("❌ Strike! (VENTING PREVENTS EXPLOSIONS)");
+      displayMessage("STRIKE   ");
+  delay(3000); 
+  scheduleNextQuestion();
     }
   } else if (currentQuestion == DETONATE) {
     if (userSaidYes) {
-      Serial.println("💥 BOOM! Die Bombe ist explodiert.");
+      displayMessage("BOOM!   ");
+      delay(3000);
+      DOG.displ_onoff(false);
     } else {
-      Serial.println("✅ Richtig (Nicht detoniert).");
+      displayMessage("CORRECT   ");
+      delay(3000);
+      scheduleNextQuestion();
     }
   }
 
-  scheduleNextQuestion();
 }
 
 // Wenn keine Taste gedrückt wurde
 void handleNoResponse() {
   awaitingResponse = false;
 
-  Serial.println("⏰ Zeit abgelaufen!");
-  Serial.println("❌ Strike");
+  displayMessage("⏰ Zeit abgelaufen! ❌ Strike");
   if (currentQuestion == VENT_GAS) {
-    Serial.println("VENTING PREVENTS EXPLOSIONS");
+    displayMessage("STRIKE    ");
   }
 
+  delay(3000);
   askNewQuestion();
 }
