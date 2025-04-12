@@ -22,6 +22,8 @@ enum CMD_t {
   STRIKE_2,
   HAS_VOWELS,
   HAS_ODD,
+  EXPLODED,
+  FINISHED
 };
 
 #define NOT_INIT (100)
@@ -106,7 +108,9 @@ void setup() {
 
 
 void loop() {
-  static uint8_t new_status = status;
+  static uint8_t new_status;
+  new_status = status;
+
   for(int i = 0; i < DEVICE_N; i++) {
     if(found[i]) {
       sendCommand(i, STATUS);
@@ -114,13 +118,14 @@ void loop() {
 
       if(status == RUNNING && module_status == FAILED) {
         new_status = FAILED;
-      }
-      if(status == RUNNING && module_status == NEW_STRIKE) {
+      } else if(status == RUNNING && module_status == NEW_STRIKE) {
         strikes++;
         if(strikes >= 3) {
           new_status = FAILED;
         } else {
           new_status = NEW_STRIKE;
+          Serial.print("Got new Strike from Device ");
+          Serial.println(i);
         }
       }
     }
@@ -131,6 +136,13 @@ void loop() {
       Serial.println("Exploded");
       mp3_explode();
       serial_write("Exploded");
+
+      for(int i = 0; i < DEVICE_N; i++) {
+        if(found[i]) {
+          sendCommand(i, EXPLODED);
+          readResponse(i);
+        }
+      }
     }
     status = FAILED;
   } else if (new_status == NEW_STRIKE) {
@@ -213,8 +225,8 @@ void sendCommand(const int address, const CMD_t cmd) {
   Wire.beginTransmission(address);
   Wire.write((uint8_t)(cmd)); // Sende als C-String
   Wire.endTransmission();
-  Serial.print("Gesendet: ");
-  Serial.println(cmd);
+  // Serial.print("Gesendet: ");
+  // Serial.println(cmd);
 }
 
 uint8_t readResponse(int address) {
@@ -226,8 +238,8 @@ uint8_t readResponse(int address) {
     response = Wire.read();
   }
 
-  Serial.print("Antwort: ");
-  Serial.println(response);
+  // Serial.print("Antwort: ");
+  // Serial.println(response);
 
   return response;
 }
