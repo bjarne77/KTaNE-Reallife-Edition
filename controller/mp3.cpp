@@ -9,9 +9,7 @@ SoftwareSerial softSerial(/*rx =*/7, /*tx =*/8);
 
 DFRobotDFPlayerMini player;
 
-static unsigned long timerTick = millis();
-static unsigned long timerExplodeStart = millis();
-static unsigned long timerExplodeStop = millis();
+#define VOLUME (20) // 0-30
 
 void mp3_init() {
   FPSerial.begin(9600);
@@ -19,7 +17,7 @@ void mp3_init() {
   player.begin(FPSerial, /*isACK = */true, /*doReset = */true);
 
   // set volume between 0 and 30
-  player.volume(20);
+  player.volume(VOLUME);
 }
 
 void mp3_reset() {

@@ -4,6 +4,7 @@
 #include <Wire.h>
 
 #include "mp3.h"
+#include "serialnumber.h"
 
 enum DEVICE_t {
   DEVICE_1 = 1,
@@ -15,30 +16,37 @@ enum CMD_t {
   RESET,
   INIT,
   START,
-  STATUS
+  STATUS,
+  STRIKE_0,
+  STRIKE_1,
+  STRIKE_2,
+  HAS_VOWELS,
+  HAS_ODD,
 };
 
 #define NOT_INIT (100)
 #define READY (101)
 #define RUNNING (102)
+#define NEW_STRIKE (110)
 #define FAILED (200)
+#define SUCCESS (201)
 
 volatile uint8_t status = NOT_INIT;
+
+uint8_t strikes = 0;
+
+char serial_number[9] = {0};
 
 bool found[DEVICE_N] = {0};
 
 void setup() {
+  randomSeed(analogRead(A0));
   Wire.begin();        // join i2c bus (address optional for master)
   Serial.begin(9600);  // start serial for output
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // INIT Blink Master
-  for(int i = DEVICE_1; i < 5; i++) {
-    digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
-    delay(400);                      // wait for a second
-    digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
-    delay(400);
-  }
+  serial_init();
+  serial_write("Boot....");
 
   // Detect devices
   for(int i = 0; i < DEVICE_N; i++) {
@@ -58,6 +66,27 @@ void setup() {
   mp3_init();
   mp3_reset();
 
+  // generate serial number
+  const bool has_vowels = random(0,2);
+  generate_serial_number(serial_number, has_vowels);
+  for(int i = 0; i < DEVICE_N && has_vowels; i++) {
+    if(found[i]) {
+      sendCommand(i, HAS_VOWELS);
+      readResponse(i);
+    }
+  }
+  if(containsOddDigit(serial_number)) {
+    for(int i = 0; i < DEVICE_N && has_vowels; i++) {
+      if(found[i]) {
+        sendCommand(i, HAS_ODD);
+        readResponse(i);
+      }
+    }
+  }
+
+
+  strikes = 0;
+
   status = READY;
 
   for(int i = 0; i < DEVICE_N; i++) {
@@ -67,26 +96,63 @@ void setup() {
     }
   }
   mp3_start();
+  
+
+  serial_write(serial_number);
+  Serial.print("Serial Nr:");
+  Serial.println(serial_number);
   status = RUNNING;
 }
 
 
 void loop() {
+  static uint8_t new_status = status;
   for(int i = 0; i < DEVICE_N; i++) {
     if(found[i]) {
       sendCommand(i, STATUS);
       const uint8_t module_status = readResponse(i);
 
       if(status == RUNNING && module_status == FAILED) {
-        Serial.println("Exploded");
-        Serial.print("Abc");
-        Serial.print(status);
-        mp3_explode();
-        status = FAILED;
-        Serial.print("   ABV");
-        Serial.println(status);
+        new_status = FAILED;
+      }
+      if(status == RUNNING && module_status == NEW_STRIKE) {
+        strikes++;
+        if(strikes >= 3) {
+          new_status = FAILED;
+        } else {
+          new_status = NEW_STRIKE;
+        }
       }
     }
+  }
+
+  if(new_status == FAILED) {
+    if(status == RUNNING) {
+      Serial.println("Exploded");
+      mp3_explode();
+      serial_write("Exploded");
+    }
+    status = FAILED;
+  } else if (new_status == NEW_STRIKE) {
+    for(int i = 0; i < DEVICE_N; i++) {
+      if(found[i]) {
+        switch(strikes) {
+          case 0:
+            sendCommand(i, STRIKE_0);
+            break;
+          case 1:
+            sendCommand(i, STRIKE_1);
+            break;
+          case 2:
+            sendCommand(i, STRIKE_2);
+            break;
+          default:
+            break;
+        }
+        readResponse(i);
+      }
+    }
+    status = RUNNING;
   }
   delay(100);
 }

@@ -21,19 +21,32 @@ uint8_t lastCommand = "";
 #define NOT_INIT (100)
 #define READY (101)
 #define RUNNING (102)
+#define NEW_STRIKE (110)
 #define FAILED (200)
+#define SUCCESS (201)
 
 enum CMD_t {
   RESET,
   INIT,
   START,
-  STATUS
+  STATUS,
+  STRIKE_0,
+  STRIKE_1,
+  STRIKE_2,
+  HAS_VOWELS,
+  HAS_ODD,
 };
 
 volatile uint8_t status = NOT_INIT;
 
 unsigned long waitTime = 0;
 unsigned long startTime = 0;
+
+uint8_t strike = 0;
+
+// Serial Number
+bool has_vowels = false;
+bool has_odd = false;
 
 void setup() {
   Serial.begin(9600);
@@ -90,6 +103,26 @@ void requestEvent() {
       Serial.println("Handle Status");
       Wire.write(status);
       break;
+    case STRIKE_0:
+      Serial.println("Handle Strike 0");
+      strike = 0;
+      break;
+    case STRIKE_1:
+      Serial.println("Handle Strike 1");
+      strike = 1;
+      break;
+    case STRIKE_2:
+      Serial.println("Handle Strike 2");
+      strike = 2;
+      break;
+    case HAS_VOWELS:
+      Serial.println("Handle HAS_VOWELS");
+      has_vowels = true;
+      break;
+    case HAS_ODD:
+      Serial.println("Handle HAS_ODD");
+      has_odd = true;
+      break;
     default:
       Serial.println("Handle undef cmd");
       break;
@@ -98,6 +131,9 @@ void requestEvent() {
 
 // Rest the module
 void reset_module() {
+  strike = 0;
+  has_vowels = false;
+  has_odd = false;
   status = NOT_INIT;
 }
 
