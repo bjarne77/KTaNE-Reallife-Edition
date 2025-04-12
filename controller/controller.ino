@@ -8,7 +8,8 @@
 
 enum DEVICE_t {
   DEVICE_1 = 1,
-  DEVICE_2,
+  SIMONSAY,
+  MORSE,
   DEVICE_N
 };
 

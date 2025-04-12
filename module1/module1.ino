@@ -102,6 +102,10 @@ void requestEvent() {
     case STATUS:
       Serial.println("Handle Status");
       Wire.write(status);
+      if(status == NEW_STRIKE) {
+        status = RUNNING;
+      }
+      Wire.write(status);
       break;
     case STRIKE_0:
       Serial.println("Handle Strike 0");
