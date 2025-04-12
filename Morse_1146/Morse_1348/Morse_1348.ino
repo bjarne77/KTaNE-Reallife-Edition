@@ -209,19 +209,19 @@ String testButton (){
   // Prüfe, welcher Taster gedrückt ist (Active LOW wegen INPUT_PULLUP)
   if (buttonState1 == LOW) {
     Serial.println("Button 1 wurde gedrückt.");
-    delay(200); // entprellen und Wiederholungen vermeiden
+    delay(100); // entprellen und Wiederholungen vermeiden
     return ("e");
   }
 
   if (buttonState2 == LOW) {
     Serial.println("Button 2 wurde gedrückt.");
-    delay(200);
+    delay(100);
     return("d");
   }
 
   if (buttonState3 == LOW) {
     Serial.println("Button 3 wurde gedrückt.");
-    delay(200);
+    delay(100);
     return ("u");
   }
   return("/n");
