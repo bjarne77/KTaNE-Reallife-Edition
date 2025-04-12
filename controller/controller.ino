@@ -3,6 +3,8 @@
 
 #include <Wire.h>
 
+#include "mp3.h"
+
 enum DEVICE_t {
   DEVICE_1 = 1,
   DEVICE_2,
@@ -15,6 +17,13 @@ enum CMD_t {
   START,
   STATUS
 };
+
+#define NOT_INIT (100)
+#define READY (101)
+#define RUNNING (102)
+#define FAILED (200)
+
+volatile uint8_t status = NOT_INIT;
 
 bool found[DEVICE_N] = {0};
 
@@ -46,6 +55,10 @@ void setup() {
       // Init device
     }
   }
+  mp3_init();
+  mp3_reset();
+
+  status = READY;
 
   for(int i = 0; i < DEVICE_N; i++) {
     if(found[i]) {
@@ -53,6 +66,8 @@ void setup() {
       readResponse(i);
     }
   }
+  mp3_start();
+  status = RUNNING;
 }
 
 
@@ -60,7 +75,17 @@ void loop() {
   for(int i = 0; i < DEVICE_N; i++) {
     if(found[i]) {
       sendCommand(i, STATUS);
-      readResponse(i);
+      const uint8_t module_status = readResponse(i);
+
+      if(status == RUNNING && module_status == FAILED) {
+        Serial.println("Exploded");
+        Serial.print("Abc");
+        Serial.print(status);
+        mp3_explode();
+        status = FAILED;
+        Serial.print("   ABV");
+        Serial.println(status);
+      }
     }
   }
   delay(100);
@@ -126,7 +151,7 @@ void sendCommand(const int address, const CMD_t cmd) {
   Serial.println(cmd);
 }
 
-void readResponse(int address) {
+uint8_t readResponse(int address) {
   delay(50); // Kleine Pause für den Slave
   Wire.requestFrom(address, 1); // max 20 Bytes
 
@@ -138,7 +163,5 @@ void readResponse(int address) {
   Serial.print("Antwort: ");
   Serial.println(response);
 
-  if(response == 100) {
-    Serial.println("BLA");
-  }
+  return response;
 }
