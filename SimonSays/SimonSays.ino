@@ -1,32 +1,11 @@
 
 #include <Wire.h>
 
+#include "module.h"
+
 #define DEVICE (2)
 
-uint8_t lastCommand = "";
-
-#define NOT_INIT (100)
-#define READY (101)
-#define RUNNING (102)
-#define NEW_STRIKE (110)
-#define FAILED (200)
-#define SUCCESS (201)
-
-enum CMD_t {
-  RESET,
-  INIT,
-  START,
-  STATUS,
-  STRIKE_0,
-  STRIKE_1,
-  STRIKE_2,
-  HAS_VOWELS,
-  HAS_ODD,
-  EXPLODED,
-  FINISHED
-};
-
-volatile uint8_t status = NOT_INIT;
+Module module;
 
 const int Button_red = 2;
 const int Button_blue = 3;
@@ -56,10 +35,6 @@ const int sequenz_break = 1000;
 
 const int entprell_delay = 100;
 
-bool vowel_in_serial_number = true;
-bool has_odd = false; // for interface only
-int number_of_strikes = 0;
-
 // [strikes] [color]
 const static Color matrix_vowel[3][4] = {
   {Blue, Red, Yellow, Green},
@@ -78,9 +53,14 @@ void setup() {
   randomSeed(analogRead(0));
   Serial.begin(9600);
 
-  Wire.begin(DEVICE);                // join i2c bus with address #8
-  Wire.onReceive(receiveEvent);
-  Wire.onRequest(requestEvent);
+  Serial.println("Hello");
+
+  module.init(DEVICE);
+  module.handle_reset_ptr = &reset_module;
+  module.handle_init_ptr = &init_module;
+  module.handle_start_ptr = &start_module;
+
+  Serial.println("Hello2");
 
   pinMode(Button_red, INPUT);
   pinMode(Button_green, INPUT);
@@ -121,90 +101,16 @@ void loop() {
       }
 }
 
-void receiveEvent(int howMany) {
-  lastCommand = 0; // Befehl zurücksetzen
-
-  while (Wire.available()) {
-    lastCommand = Wire.read();
-  }
-
-  // Serial.print("Empfangener Befehl: ");
-  // Serial.println(lastCommand);
-}
-
-void requestEvent() {
-  switch(lastCommand) {
-    case RESET:
-      Serial.println("Handle Reset");
-      reset_module();
-      break;
-    case INIT:
-      Serial.println("Handle Init");
-      init_module();
-      break;
-    case START:
-      Serial.println("Handle Start");
-      start_module();
-      break;
-    case STATUS:
-      // Serial.println("Handle Status");
-      Wire.write(status);
-      if(status == NEW_STRIKE) {
-        status = RUNNING;
-      }
-      break;
-    case STRIKE_0:
-      Serial.println("Handle Strike 0");
-      number_of_strikes = 0;
-      break;
-    case STRIKE_1:
-      Serial.println("Handle Strike 1");
-      number_of_strikes = 1;
-      break;
-    case STRIKE_2:
-      Serial.println("Handle Strike 2");
-      number_of_strikes = 2;
-      break;
-    case HAS_VOWELS:
-      Serial.println("Handle HAS_VOWELS");
-      vowel_in_serial_number = true;
-      break;
-    case HAS_ODD:
-      Serial.println("Handle HAS_ODD");
-      has_odd = true;
-      break;
-    case EXPLODED:
-      Serial.println("Handle EXPLODED");
-      break;
-    case FINISHED:
-      Serial.println("Handle FINISHED");
-      break;
-    default:
-      Serial.println("Handle undef cmd");
-      break;
-  }
-}
 
 // Rest the module
 void reset_module() {
-  number_of_strikes = 0;
-  vowel_in_serial_number = false;
-  has_odd = false;
-
   digitalWrite(Led_red, LOW);
   digitalWrite(Led_green, LOW);
   digitalWrite(Led_blue, LOW);
   digitalWrite(Led_yellow, LOW);
-
-  status = NOT_INIT;
 }
 
 void init_module() {
-  if(status != NOT_INIT) {
-    Serial.println("Can't init without reset");
-    return;
-  }
-
   for (int i=0; i<4; i++) {
     sequenz[i] = random(0, 4);
   }
@@ -217,13 +123,10 @@ void init_module() {
   Serial.print(" ");
   Serial.print(color2name(sequenz[3]));
   Serial.println("");
-
-  status = READY;
 }
 
 void start_module() {
-  Serial.println("Module started");
-  status = RUNNING;
+  // TODO
 }
 
 
@@ -288,7 +191,7 @@ Color button2color(const int button) {
 }
 
 int checking(int pressed_button, Color matrix[3][4]) {
-  const auto exprected = matrix[number_of_strikes][sequenz[solved_state]];
+  const auto exprected = matrix[module.get_strike_count()][sequenz[solved_state]];
   Serial.print("Expected: ");
   Serial.print(color2name(exprected));
   Serial.print(" got: ");
@@ -298,11 +201,11 @@ int checking(int pressed_button, Color matrix[3][4]) {
     solved_state++;
     if(solved_state == 4) {
       Serial.println("Successful");
-      status = SUCCESS;
+      //module.update_status(Module::STATUS::SUCCESS)
     }
   } else {
     solved_state = 0;
-    status = NEW_STRIKE;
+    //module.update_status(Module::STATUS::NEW_STRIKE)
   }
 
   Serial.print("State: ");
@@ -310,8 +213,8 @@ int checking(int pressed_button, Color matrix[3][4]) {
 }
 
 int checking(int pressed_button) {
-  if(status == RUNNING) {
-    if (vowel_in_serial_number) {
+  if(module.get_status() == Module::STATUS::RUNNING) {
+    if (module.has_vowels() == WireBool::WIRE_TRUE) {
       checking(pressed_button, matrix_vowel);
     } else {
       checking(pressed_button, matrix_novowel);
