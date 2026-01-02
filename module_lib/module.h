@@ -1,6 +1,12 @@
 
 #include <stdint.h>
 
+enum DEVICE {
+  DEVICE_1 = 1,
+  SIMONSAY,
+  MORSE,
+  DEVICE_N
+};
 
 
 enum WireBool {
@@ -21,7 +27,23 @@ public:
         RUNNING = 102,
         NEW_STRIKE = 110,
         FAILED = 200,
-        SUCCESS = 201
+        SUCCESS = 201,
+        FINISHED = 202
+    };
+
+    enum CMD {
+        RESET,
+        INIT,
+        START,
+        STATUS_UPDATE,
+        STRIKE_0,
+        STRIKE_1,
+        STRIKE_2,
+        HAS_VOWELS,
+        HAS_ODD,
+        EXPLODED,
+        FINISHED,
+        UNDEFINED
     };
 
 public:
@@ -57,22 +79,6 @@ protected:
     virtual void handle_finished();
 
 private:
-    enum CMD {
-        RESET,
-        INIT,
-        START,
-        STATUS_UPDATE,
-        STRIKE_0,
-        STRIKE_1,
-        STRIKE_2,
-        HAS_VOWELS,
-        HAS_ODD,
-        EXPLODED,
-        FINISHED,
-        UNDEFINED
-    };
-
-private:
 
     void receiveEvent(int howMany);
     static void receiveEventWrapper(int howMany);
@@ -91,4 +97,4 @@ private:
     uint8_t strike_count = 0;
 };
 
-#include "module.hpp"
+#include "module.ipp"

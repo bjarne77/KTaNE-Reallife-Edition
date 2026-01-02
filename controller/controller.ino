@@ -3,44 +3,19 @@
 
 #include <Wire.h>
 
+#include "module.h"
+
 #include "mp3.h"
 #include "serialnumber.h"
 
-enum DEVICE_t {
-  DEVICE_1 = 1,
-  SIMONSAY,
-  MORSE,
-  DEVICE_N
-};
 
-enum CMD_t {
-  RESET,
-  INIT,
-  START,
-  STATUS,
-  STRIKE_0,
-  STRIKE_1,
-  STRIKE_2,
-  HAS_VOWELS,
-  HAS_ODD,
-  EXPLODED,
-  FINISHED
-};
-
-#define NOT_INIT (100)
-#define READY (101)
-#define RUNNING (102)
-#define NEW_STRIKE (110)
-#define FAILED (200)
-#define SUCCESS (201)
-
-volatile uint8_t status = NOT_INIT;
+volatile Module::STATUS status = Module::STATUS::NOT_INIT;
 
 uint8_t strikes = 0;
 
 char serial_number[9] = {0};
 
-bool found[DEVICE_N] = {0};
+bool found[DEVICE::DEVICE_N] = {0};
 int num_found = 0;
 
 void setup() {
@@ -49,20 +24,20 @@ void setup() {
   Serial.begin(9600);  // start serial for output
   pinMode(LED_BUILTIN, OUTPUT);
 
-  serial_init();
-  serial_write("Boot....");
+  serialnumber_init();
+  serialnumber_write("Boot....");
 
   // Detect devices
-  for(int i = 0; i < DEVICE_N; i++) {
+  for(int i = 0; i < DEVICE::DEVICE_N; i++) {
     found[i] = foundDevice(i);
 
     if(found[i]) {
-      sendCommand(i, RESET);
+      sendCommand(i, Module::CMD::RESET);
       readResponse(i);
-      sendCommand(i, INIT);
+      sendCommand(i, Module::CMD::INIT);
       readResponse(i);
       delay(1000);
-      sendCommand(i, STATUS);
+      sendCommand(i, Module::CMD::STATUS_UPDATE);
       readResponse(i);
       // Init device
       num_found++;
@@ -74,16 +49,16 @@ void setup() {
   // generate serial number
   const bool has_vowels = random(0,2);
   generate_serial_number(serial_number, has_vowels);
-  for(int i = 0; i < DEVICE_N && has_vowels; i++) {
+  for(int i = 0; i < DEVICE::DEVICE_N && has_vowels; i++) {
     if(found[i]) {
-      sendCommand(i, HAS_VOWELS);
+      sendCommand(i, Module::CMD::HAS_VOWELS);
       readResponse(i);
     }
   }
   if(containsOddDigit(serial_number)) {
-    for(int i = 0; i < DEVICE_N && has_vowels; i++) {
+    for(int i = 0; i < DEVICE::DEVICE_N && has_vowels; i++) {
       if(found[i]) {
-        sendCommand(i, HAS_ODD);
+        sendCommand(i, Module::CMD::HAS_ODD);
         readResponse(i);
       }
     }
@@ -92,85 +67,85 @@ void setup() {
 
   strikes = 0;
 
-  status = READY;
+  status = Module::STATUS::READY;
 
-  for(int i = 0; i < DEVICE_N; i++) {
+  for(int i = 0; i < DEVICE::DEVICE_N; i++) {
     if(found[i]) {
-      sendCommand(i, START);
+      sendCommand(i, Module::CMD::START);
       readResponse(i);
     }
   }
   mp3_start();
   
 
-  serial_write(serial_number);
+  serialnumber_write(serial_number);
   Serial.print("Serial Nr:");
   Serial.println(serial_number);
-  status = RUNNING;
+  status = Module::STATUS::RUNNING;
 }
 
 
 void loop() {
-  static uint8_t new_status;
+  static Module::STATUS new_status;
   new_status = status;
 
   static uint8_t num_success;
   num_success = 0;
 
-  for(int i = 0; i < DEVICE_N; i++) {
+  for(int i = 0; i < DEVICE::DEVICE_N; i++) {
     if(found[i]) {
-      sendCommand(i, STATUS);
-      const uint8_t module_status = readResponse(i);
+      sendCommand(i, Module::CMD::STATUS_UPDATE);
+      const Module::STATUS module_status = (Module::STATUS)readResponse(i);
       // Serial.print("Status from Node ");
       // Serial.print(i);
       // Serial.print(":  ");
       // Serial.println(module_status);
 
-      if(status == RUNNING && module_status == FAILED) {
-        new_status = FAILED;
-      } else if(status == RUNNING && module_status == NEW_STRIKE) {
+      if(status == Module::STATUS::RUNNING && module_status == Module::STATUS::FAILED) {
+        new_status = Module::STATUS::FAILED;
+      } else if(status == Module::STATUS::RUNNING && module_status == Module::STATUS::NEW_STRIKE) {
         strikes++;
         if(strikes >= 3) {
-          new_status = FAILED;
+          new_status = Module::STATUS::FAILED;
         } else {
-          new_status = NEW_STRIKE;
+          new_status = Module::STATUS::NEW_STRIKE;
           Serial.print("Got new Strike from Device ");
           Serial.println(i);
         }
-      } else if(status == RUNNING && module_status == SUCCESS) {
-        Serial.print("Got Success from Device ");
+      } else if(status == Module::STATUS::RUNNING && module_status == Module::STATUS::SUCCESS) {
+        Serial.print("Got Success from Device "); 
         Serial.println(i);
         num_success++;
       }
     }
   }
 
-  if(new_status == FAILED) {
-    if(status == RUNNING) {
+  if(new_status == Module::STATUS::FAILED) {
+    if(status == Module::STATUS::RUNNING) {
       Serial.println("Exploded");
       mp3_explode();
-      serial_write("Exploded");
+      serialnumber_write("Exploded");
 
-      for(int i = 0; i < DEVICE_N; i++) {
+      for(int i = 0; i < DEVICE::DEVICE_N; i++) {
         if(found[i]) {
-          sendCommand(i, EXPLODED);
+          sendCommand(i, Module::CMD::EXPLODED);
           readResponse(i);
         }
       }
     }
-    status = FAILED;
-  } else if (new_status == NEW_STRIKE) {
-    for(int i = 0; i < DEVICE_N; i++) {
+    status = Module::STATUS::FAILED;
+  } else if (new_status == Module::STATUS::NEW_STRIKE) {
+    for(int i = 0; i < DEVICE::DEVICE_N; i++) {
       if(found[i]) {
         switch(strikes) {
           case 0:
-            sendCommand(i, STRIKE_0);
+            sendCommand(i, Module::CMD::STRIKE_0);
             break;
           case 1:
-            sendCommand(i, STRIKE_1);
+            sendCommand(i, Module::CMD::STRIKE_1);
             break;
           case 2:
-            sendCommand(i, STRIKE_2);
+            sendCommand(i, Module::CMD::STRIKE_2);
             break;
           default:
             break;
@@ -178,17 +153,17 @@ void loop() {
         readResponse(i);
       }
     }
-    status = RUNNING;
+    status = Module::STATUS::RUNNING;
   }
 
-  if(status == RUNNING && num_success == num_found) {
-    for(int i = 0; i < DEVICE_N; i++) {
+  if(status == Module::STATUS::RUNNING && num_success == num_found) {
+    for(int i = 0; i < DEVICE::DEVICE_N; i++) {
       if(found[i]) {
-        sendCommand(i, FINISHED);
+        sendCommand(i, Module::CMD::FINISHED);
         readResponse(i);
       }
     }
-    status = FINISHED;
+    status = Module::STATUS::FINISHED;
     // TODO inform the player
   }
   delay(100);
@@ -246,7 +221,7 @@ bool foundDevice(int address) {
   return false;
 }
 
-void sendCommand(const int address, const CMD_t cmd) {
+void sendCommand(const int address, const Module::CMD cmd) {
   Wire.beginTransmission(address);
   Wire.write((uint8_t)(cmd)); // Sende als C-String
   Wire.endTransmission();
