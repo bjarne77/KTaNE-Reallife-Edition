@@ -30,7 +30,7 @@ uint8_t Module::get_strike_count() const {
 }
 
 void Module::update_status(STATUS new_status) {
-    Wire.write((uint8_t)new_status);
+    //Wire.write((uint8_t)new_status);
     this->status = new_status;
 }
 
@@ -104,7 +104,7 @@ void Module::requestEvent() {
 
     case CMD::STATUS_UPDATE:
         // Serial.println("Handle Status");
-        //Wire.write((uint8_t)this->status);
+        Wire.write((uint8_t)this->status);
         if(this->status == STATUS::NEW_STRIKE) {
             this->status = STATUS::RUNNING;
         }
