@@ -3,8 +3,6 @@
 
 #include "module.h"
 
-#define DEVICE (2)
-
 Module module;
 
 const int Button_red = 3;
@@ -55,7 +53,7 @@ void setup() {
   randomSeed(analogRead(0));
   Serial.begin(9600);
 
-  module.init(DEVICE);
+  module.init(DEVICE::SIMONSAY);
   module.handle_reset_ptr = &reset_module;
   module.handle_init_ptr = &init_module;
   module.handle_start_ptr = &start_module;
@@ -225,11 +223,12 @@ int checking(int pressed_button, Color matrix[3][4]) {
     solved_state++;
     if(solved_state == 4) {
       Serial.println("Successful");
-      //module.update_status(Module::STATUS::SUCCESS)
+      digitalWrite(Led_finisch, HIGH);
+      module.update_status(Module::STATUS::SUCCESS);
     }
   } else {
     solved_state = 0;
-    //module.update_status(Module::STATUS::NEW_STRIKE)
+    module.update_status(Module::STATUS::NEW_STRIKE);
   }
 
   Serial.print("State: ");
