@@ -15,6 +15,7 @@ Module module;
 int cooldown = 500;
 long DownLastTimePressed = millis();
 long UpLastTimePressed = millis();
+bool EnterReleased = false;
 bool DownReleased = false;
 bool UpReleased = false;
 
@@ -24,7 +25,7 @@ int currentPos = 0;
 int selected = 0;
 bool aktualisierung = true;
 
-const int buttonEnterPin = 14; // Pin-Nummern für die Taster
+const int buttonEnterPin = 15; // Pin-Nummern für die Taster
 const int buttonDownPin = 16;
 const int buttonUpPin = 17;
 const int completedPin = 7;
@@ -203,6 +204,7 @@ void enter_pressed(){
     module.update_status(Module::STATUS::SUCCESS);
     digitalWrite(completedPin, HIGH);
   } else {
+    Serial.println("New Strike!");
     module.update_status(Module::STATUS::NEW_STRIKE);
   }
 }
@@ -215,7 +217,12 @@ void testButton (){
   int buttonState3 = digitalRead(buttonUpPin);
 
   // Prüfe, welcher Taster gedrückt ist (Active LOW wegen INPUT_PULLUP)
-  if (buttonState1 == LOW) {
+  if (buttonState1 == HIGH) {
+    EnterReleased = true;
+  }
+  
+  if (buttonState1 == LOW && EnterReleased) {
+    EnterReleased = false;
     delay(delay_entprell); // entprellen und Wiederholungen vermeiden
     enter_pressed();
   }
