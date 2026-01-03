@@ -149,11 +149,19 @@ void Module::requestEvent() {
     case CMD::EXPLODED:
         Serial.println("Handle EXPLODED");
         this->handle_exploded();
+        if(this->handle_exploded_ptr != nullptr) {
+            this->handle_exploded_ptr();
+        }
+        this->status = STATUS::EXPLODED;
         break;
 
     case CMD::FINISHED:
         Serial.println("Handle FINISHED");
         this->handle_finished();
+        if(this->handle_finished_ptr != nullptr) {
+            this->handle_finished_ptr();
+        }
+        this->status = STATUS::FINISHED;
         break;
 
     case CMD::UNDEFINED: // fall through

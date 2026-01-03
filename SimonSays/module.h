@@ -26,9 +26,10 @@ public:
         READY = 101,
         RUNNING = 102,
         NEW_STRIKE = 110,
-        FAILED = 200,
-        SUCCESS = 201,
-        FINISHED = 202
+        FAILED = 200, // Module failed
+        SUCCESS = 201,  // Module solved
+        FINISHED = 202, // Bomb defused
+        EXPLODED = 203 // Bomb exploded
     };
 
     enum CMD {
