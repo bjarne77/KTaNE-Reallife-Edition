@@ -204,6 +204,7 @@ void loop() {
     }
     status = Module::STATUS::FINISHED;
     serialnumber_write("Finished");
+    mp3_finish();
   }
 
   if(status == Module::STATUS::RUNNING) {

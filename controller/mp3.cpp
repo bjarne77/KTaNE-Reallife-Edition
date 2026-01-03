@@ -36,5 +36,10 @@ void mp3_explode() {
   player.play(2);
 }
 
+void mp3_finish() {
+  // play fanfare sound
+  player.play(3);
+}
+
 
  
