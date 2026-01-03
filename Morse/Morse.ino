@@ -24,9 +24,9 @@ int currentPos = 0;
 int selected = 0;
 bool aktualisierung = true;
 
-const int buttonPin1 = 16; // Pin-Nummern für die Taster
-const int buttonPin2 = 17;
-const int buttonPin3 = 18;
+const int buttonEnterPin = 14; // Pin-Nummern für die Taster
+const int buttonDownPin = 16;
+const int buttonUpPin = 17;
 const int completedPin = 7;
 
 // Werte sind fest
@@ -67,13 +67,13 @@ void setup() {
   module.handle_reset_ptr = &reset_module;
   module.handle_start_ptr = &start_module;
 
-  pinMode(buttonPin1, INPUT_PULLUP); // Pull up intern
-  pinMode(buttonPin2, INPUT_PULLUP);
-  pinMode(buttonPin3, INPUT_PULLUP);
+  pinMode(buttonEnterPin, INPUT_PULLUP); // Pull up intern
+  pinMode(buttonDownPin, INPUT_PULLUP);
+  pinMode(buttonUpPin, INPUT_PULLUP);
 
   pinMode(ledPin, OUTPUT);
   pinMode(completedPin, OUTPUT);
-  digitalWrite(completedPin, HIGH);
+  digitalWrite(completedPin, LOW);
 
   serial_init();
   serial_write("Boot... ");
@@ -88,6 +88,7 @@ void loop() {
 
 // Rest the module
 void reset_module() {
+  digitalWrite(completedPin, LOW);
 }
 
 void init_module() {
@@ -114,8 +115,7 @@ void serial_write(char* str) {
 
 void blinkMorseWord(const char* word) {
   for (int i = 0; word[i] != '\0'; i++) {
-    char c = word[i];
-    int index = findLetterIndex(word);
+    int index = findLetterIndex(word[i]);
     if (index != -1) {
       blinkMorseLetter(morse[index]);
       long current_time = millis();
@@ -132,7 +132,6 @@ void blinkMorseWord(const char* word) {
 }
 
 void blinkMorseLetter(const char* code) {
-  Serial.print("in blinkMorseLetter");      //NICHT LÖSCHEN! --> muss halt so
   for (int i = 0; code[i] != '\0'; i++) {
     if (code[i] == '.') {
       blinkDot();
@@ -172,6 +171,8 @@ int findLetterIndex(char c) {
   for (int i = 0; i < 26; i++) {
     if (letters[i] == c) return i;
   }
+  Serial.println("Look for letter:");
+  Serial.print((int)c);
   return -1;
 }
 
@@ -200,7 +201,7 @@ void enter_pressed(){
   if (selected==currentPos){
     serial_write("         ");
     module.update_status(Module::STATUS::SUCCESS);
-    digitalWrite(completedPin, LOW);
+    digitalWrite(completedPin, HIGH);
   } else {
     module.update_status(Module::STATUS::NEW_STRIKE);
   }
@@ -209,9 +210,9 @@ void enter_pressed(){
 //String testButton (){
 void testButton (){
   // Lese den Zustand jedes Tasters
-  int buttonState1 = digitalRead(buttonPin1);
-  int buttonState2 = digitalRead(buttonPin2);
-  int buttonState3 = digitalRead(buttonPin3);
+  int buttonState1 = digitalRead(buttonEnterPin);
+  int buttonState2 = digitalRead(buttonDownPin);
+  int buttonState3 = digitalRead(buttonUpPin);
 
   // Prüfe, welcher Taster gedrückt ist (Active LOW wegen INPUT_PULLUP)
   if (buttonState1 == LOW) {
