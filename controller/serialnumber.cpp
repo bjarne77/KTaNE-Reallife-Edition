@@ -7,7 +7,7 @@ dogm_7036 DOG;
 byte arrow_down[] = {0x04, 0x04, 0x04, 0x04, 0x15, 0x0E, 0x04, 0x00}; //pattern for own defined character
 
 void serialnumber_init() {
-  DOG.initialize(10,0,0,9,4,1,DOGM081);   //SS = 10, 0,0= use Hardware SPI, 9 = RS, 4= RESET, 1 = 5V, EA DOGM081-A (=1 line)
+  DOG.initialize(10,0,0,9,4,1,DOGM162);   //SS = 10, 0,0= use Hardware SPI, 9 = RS, 4= RESET, 1 = 5V, EA DOGM081-A (=1 line)
   DOG.displ_onoff(true);          //turn Display on
   DOG.cursor_onoff(true);         //turn Curosor blinking on
 
@@ -16,6 +16,11 @@ void serialnumber_init() {
 
 void serialnumber_write(char* str) {
   DOG.position(1,1);              //set Position: first line, first character
+  DOG.string(str);          //show String
+}
+
+void serialnumber_write2(char* str) {
+  DOG.position(1,2);              //set Position: first line, first character
   DOG.string(str);          //show String
 }
 

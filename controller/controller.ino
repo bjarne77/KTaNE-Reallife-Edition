@@ -18,6 +18,11 @@ char serial_number[9] = {0};
 bool found[DEVICE::DEVICE_N] = {0};
 int num_found = 0;
 
+long timer = 0;
+char timer_buf[6] = {0};
+#define TIMER_MIN (3)
+#define TIMER_MAX (10)
+
 void setup() {
   randomSeed(analogRead(A0));
   Wire.begin();        // join i2c bus (address optional for master)
@@ -26,6 +31,7 @@ void setup() {
 
   serialnumber_init();
   serialnumber_write("Boot....");
+  Serial.println("Boot....");
 
   // Detect devices
   for(int i = 0; i < DEVICE::DEVICE_N; i++) {
@@ -43,6 +49,9 @@ void setup() {
       num_found++;
     }
   }
+  Serial.print("Found ");
+  Serial.print(num_found);
+  Serial.print(" devices\n");
   mp3_init();
   mp3_reset();
 
@@ -81,6 +90,12 @@ void setup() {
   serialnumber_write(serial_number);
   Serial.print("Serial Nr:");
   Serial.println(serial_number);
+
+  timer = random(TIMER_MIN, TIMER_MAX)*10*1000 + millis(); // time in ms
+  timer2str(timer - millis(), timer_buf);
+  serialnumber_write2(timer_buf);
+
+
   status = Module::STATUS::RUNNING;
 }
 
@@ -128,6 +143,12 @@ void loop() {
     }
   }
 
+  // check timer
+  if(status == Module::STATUS::RUNNING && timer - (long)millis() <= 0) {
+    new_status = Module::STATUS::FAILED;
+    Serial.println("Time is over!");
+  }
+
   if(new_status == Module::STATUS::FAILED) {
     if(status == Module::STATUS::RUNNING) {
       Serial.println("Exploded");
@@ -172,8 +193,18 @@ void loop() {
       }
     }
     status = Module::STATUS::FINISHED;
-    // TODO inform the player
+    serialnumber_write("Finished");
   }
+
+  if(status == Module::STATUS::RUNNING) {
+    // Update Timer
+    timer2str(timer - millis(), timer_buf);
+    serialnumber_write2(timer_buf);
+  } else {
+    serialnumber_write2(""); // clear timer
+  }
+
+
   delay(100);
 }
 
@@ -250,4 +281,13 @@ uint8_t readResponse(int address) {
   // Serial.println(response);
 
   return response;
+}
+
+void timer2str(long timer, char* buf) {
+  long sec = timer / 1000;
+  long min = sec / 60;
+  sec = sec % 60;
+
+  sprintf(buf, "%02u:", min);
+  sprintf(buf+3, "%02u", sec);
 }
