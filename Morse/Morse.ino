@@ -1,46 +1,22 @@
+
 // --- Morse Code Modul (Erraten per Eingabe) ---
 // LED: LED-BUILTIN; noch anzupassen an externe LED, Eingabe über Serial
-
-int ledPin = 5; 
-int dotTime = 200; // <-- ggf anpassen
 
 #include <Arduino.h>
 #include <SPI.h>
 #include "dogm_7036.h"
 #include <Wire.h>
+#include "module.h"
 
-#define DEVICE (3)
+const int ledPin = 5; 
 
-uint8_t lastCommand = "";
+Module module;
 
-#define NOT_INIT (100)
-#define READY (101)
-#define RUNNING (102)
-#define NEW_STRIKE (110)
-#define FAILED (200)
-#define SUCCESS (201)
-
-enum CMD_t {
-  RESET,
-  INIT,
-  START,
-  STATUS,
-  STRIKE_0,
-  STRIKE_1,
-  STRIKE_2,
-  HAS_VOWELS,
-  HAS_ODD,
-  EXPLODED,
-  FINISHED
-};
-
-volatile uint8_t status = NOT_INIT;
-
-uint8_t strike = 0;
-
-// Serial Number
-bool has_vowels = false;
-bool has_odd = false;
+int cooldown = 500;
+long DownLastTimePressed = millis();
+long UpLastTimePressed = millis();
+bool DownReleased = false;
+bool UpReleased = false;
 
 dogm_7036 DOG;
 
@@ -48,16 +24,19 @@ int currentPos = 0;
 int selected = 0;
 bool aktualisierung = true;
 
-const int buttonPin1 = 2; // Pin-Nummern für die Taster
-const int buttonPin2 = 3;
-const int buttonPin3 = 6;
+const int buttonPin1 = 16; // Pin-Nummern für die Taster
+const int buttonPin2 = 17;
+const int buttonPin3 = 18;
 const int completedPin = 7;
 
 // Werte sind fest
-int dashTime = dotTime * 3;
-int symbolPause = dotTime;
-int letterPause = dotTime * 3;
-int wordPause = dotTime * 7;
+const int dotTime = 200; // <-- ggf anpassen
+const int dashTime = dotTime * 3;
+const int symbolPause = dotTime;
+const int letterPause = dotTime * 3;
+const int wordPause = dotTime * 7;
+
+const int delay_entprell = 50;
 
 // moegliche Woerter, max Leange ist "strobe" mit 22 dot-Einheiten
 const char* words[] = {
@@ -65,7 +44,7 @@ const char* words[] = {
   "leaks", "strobe", "bistro", "flick", "bombs", "break", "brick",
   "steak", "sting", "vector", "beats"
 };
-int wordCount = sizeof(words) / sizeof(words[0]);
+const int wordCount = sizeof(words) / sizeof(words[0]);
 
 const char* letters = "abcdefghijklmnopqrstuvwxyz";
 const char* morse[] = {
@@ -80,120 +59,46 @@ const char* freq[] = {"3.505", "3.515", "3.522", "3.532", "3.535", "3.542",
 String currentWord = "";
 
 void setup() {
-  pinMode(ledPin, OUTPUT);
+  randomSeed(analogRead(A0));
   Serial.begin(9600);
 
-  Wire.begin(DEVICE);                // join i2c bus with address #8
-  Wire.onReceive(receiveEvent);
-  Wire.onRequest(requestEvent);
-
-  randomSeed(analogRead(A0));
-  serial_init();
-  serial_write("Boot... ");
+  module.init(DEVICE::MORSE);
+  module.handle_init_ptr = &init_module;
+  module.handle_reset_ptr = &reset_module;
+  module.handle_start_ptr = &start_module;
 
   pinMode(buttonPin1, INPUT_PULLUP); // Pull up intern
   pinMode(buttonPin2, INPUT_PULLUP);
   pinMode(buttonPin3, INPUT_PULLUP);
+
+  pinMode(ledPin, OUTPUT);
+  pinMode(completedPin, OUTPUT);
+  digitalWrite(completedPin, HIGH);
+
+  serial_init();
+  serial_write("Boot... ");
 }
 
 void loop() {
   // Morsecode regelmäßig blinken
-  if (status == RUNNING) {
+  if (module.get_status() == Module::STATUS::RUNNING) {
     blinkMorseWord(currentWord.c_str());
-  }
-}
-
-void receiveEvent(int howMany) {
-  lastCommand = 0; // Befehl zurücksetzen
-
-  while (Wire.available()) {
-    lastCommand = Wire.read();
-  }
-
-  // Serial.print("Empfangener Befehl: ");
-  // Serial.println(lastCommand);
-}
-
-void requestEvent() {
-  switch(lastCommand) {
-    case RESET:
-      Serial.println("Handle Reset");
-      reset_module();
-      break;
-    case INIT:
-      Serial.println("Handle Init");
-      init_module();
-      break;
-    case START:
-      Serial.println("Handle Start");
-      start_module();
-      break;
-    case STATUS:
-      // Serial.print("Handle Status ");
-      // Serial.println(status);
-      Wire.write(status);
-      if(status == NEW_STRIKE) {
-        status = RUNNING;
-      }
-      break;
-    case STRIKE_0:
-      Serial.println("Handle Strike 0");
-      strike = 0;
-      break;
-    case STRIKE_1:
-      Serial.println("Handle Strike 1");
-      strike = 1;
-      break;
-    case STRIKE_2:
-      Serial.println("Handle Strike 2");
-      strike = 2;
-      break;
-    case HAS_VOWELS:
-      Serial.println("Handle HAS_VOWELS");
-      has_vowels = true;
-      break;
-    case HAS_ODD:
-      Serial.println("Handle HAS_ODD");
-      has_odd = true;
-      break;
-    case EXPLODED:
-      Serial.println("Handle EXPLODED");
-      break;
-    case FINISHED:
-      Serial.println("Handle FINISHED");
-      break;
-    default:
-      Serial.println("Handle undef cmd");
-      break;
   }
 }
 
 // Rest the module
 void reset_module() {
-  strike = 0;
-  has_vowels = false;
-  has_odd = false;
-
-  status = NOT_INIT;
 }
 
 void init_module() {
-  if(status != NOT_INIT) {
-    Serial.println("Can't init without reset");
-    return;
-  }
-
   currentPos = random(wordCount);
   currentWord = words[currentPos];
-  status = READY;
 }
 
 void start_module() {
+  Refresh_Display();
   Serial.print("Neues Spiel! Rate das Wort in Morsecode.\nHinweis: ");
   Serial.println(currentWord + "---" + freq[currentPos]);  // <-- Für Debug, später ausblenden
-
-  Serial.println("Module started");
-  status = RUNNING;
 }
 
 void serial_init() {
@@ -209,42 +114,57 @@ void serial_write(char* str) {
 
 void blinkMorseWord(const char* word) {
   for (int i = 0; word[i] != '\0'; i++) {
-    char c = toLowerCase(word[i]);
-    int index = findLetterIndex(c);
+    char c = word[i];
+    int index = findLetterIndex(word);
     if (index != -1) {
       blinkMorseLetter(morse[index]);
-      delay(letterPause);
+      long current_time = millis();
+      while (millis() <= current_time + letterPause) {
+        testButton ();
+
+      }
     }
   }
   long current_time = millis();
   while (millis() <= current_time + wordPause) {
-    testInput();
-    delay(40);
+    testButton();
   }
 }
 
 void blinkMorseLetter(const char* code) {
+  Serial.print("in blinkMorseLetter");      //NICHT LÖSCHEN! --> muss halt so
   for (int i = 0; code[i] != '\0'; i++) {
-    // if(Serial.available()){break;} //Abbruch des Blinkmusters bei Eingabe
-    testInput();
     if (code[i] == '.') {
       blinkDot();
     } else if (code[i] == '-') {
       blinkDash();
     }
-    delay(symbolPause);
+    long current_time = millis();
+      while (millis() <= current_time + symbolPause) {
+        testButton();
+      }
   }
 }
 
 void blinkDot() {
   digitalWrite(ledPin, HIGH);
-  delay(dotTime);
+
+ // hier dotTime lang testInput testen
+      long current_time = millis();
+      while (millis() <= current_time + dotTime) {
+        testButton();
+      }
   digitalWrite(ledPin, LOW);
 }
 
 void blinkDash() {
   digitalWrite(ledPin, HIGH);
-  delay(dashTime);
+  
+  // time_t start = time(nullptr);
+      long current_time = millis();
+      while (millis() <= current_time + dashTime) {
+        testButton();
+      }
   digitalWrite(ledPin, LOW);
 }
 
@@ -255,45 +175,39 @@ int findLetterIndex(char c) {
   return -1;
 }
 
-void testInput () {
-  
-  if (aktualisierung){
-    //char* output = freq[selected] + "MHz";
-    char str[9];
-    strcpy(str, freq[selected]);
-    strcat(str, "MHz");
-    Serial.println(str);
-    serial_write(str);
-    aktualisierung = false;
-  }
-  
-  String input = testButton();
-  //Serial.print("Debugging: ");
-  //Serial.println(input);
-  input.trim();
-  input.toLowerCase();
+void Refresh_Display (){
+  char str[9];
+  strcpy(str, freq[selected]);
+  strcat(str, "MHz");
+  serial_write(str);
+}
 
-  if (input == "u" && selected < 15){
+void up_pressed () {
+  if (selected < 15){
     selected++;
-    aktualisierung = true;
-  } else if ( input == "d" && selected > 0){
-    selected--;
-    aktualisierung = true;
-  } else if (input == "e"){
-    if (selected==currentPos){
-      serial_write("         ");
-      Serial.println("Success");
-      status = SUCCESS;
-      digitalWrite(completedPin, HIGH);
-      return;
-    } else {
-      Serial.println("Strike");
-      status = NEW_STRIKE;
-    }
+    Refresh_Display();
   }
 }
 
-String testButton (){
+void down_pressed () {
+  if (selected > 0){
+    selected--;
+    Refresh_Display();
+  }
+}
+
+void enter_pressed(){
+  if (selected==currentPos){
+    serial_write("         ");
+    module.update_status(Module::STATUS::SUCCESS);
+    digitalWrite(completedPin, LOW);
+  } else {
+    module.update_status(Module::STATUS::NEW_STRIKE);
+  }
+}
+
+//String testButton (){
+void testButton (){
   // Lese den Zustand jedes Tasters
   int buttonState1 = digitalRead(buttonPin1);
   int buttonState2 = digitalRead(buttonPin2);
@@ -301,21 +215,29 @@ String testButton (){
 
   // Prüfe, welcher Taster gedrückt ist (Active LOW wegen INPUT_PULLUP)
   if (buttonState1 == LOW) {
-    Serial.println("Button 1 wurde gedrückt.");
-    delay(100); // entprellen und Wiederholungen vermeiden
-    return ("e");
+    delay(delay_entprell); // entprellen und Wiederholungen vermeiden
+    enter_pressed();
   }
 
-  if (buttonState2 == LOW) {
-    Serial.println("Button 2 wurde gedrückt.");
-    delay(100);
-    return("d");
+  if (buttonState2 == HIGH) {
+    DownReleased = true;
   }
 
-  if (buttonState3 == LOW) {
-    Serial.println("Button 3 wurde gedrückt.");
-    delay(100);
-    return ("u");
+  if (buttonState2 == LOW && (millis() > DownLastTimePressed + cooldown || DownReleased)) {
+    DownReleased = false;
+    DownLastTimePressed = millis();
+    delay(delay_entprell);
+    down_pressed();
   }
-  return("/n");
+
+  if (buttonState3 == HIGH) {
+    UpReleased = true;
+  }
+
+  if (buttonState3 == LOW && (millis() > UpLastTimePressed + cooldown || UpReleased)) {
+    UpReleased = false;
+    UpLastTimePressed = millis();
+    delay(delay_entprell);
+    up_pressed();
+  }
 }
