@@ -17,6 +17,8 @@ const int Led_blue = 6;
 const int Led_green = 9;
 const int Led_yellow = 8;
 
+const int Led_finisch = 13;
+
 int buttons[4] = {Button_red, Button_blue, Button_green, Button_yellow};
 bool lastButtonState[4] = {LOW, LOW, LOW, LOW};
 
@@ -57,6 +59,8 @@ void setup() {
   module.handle_reset_ptr = &reset_module;
   module.handle_init_ptr = &init_module;
   module.handle_start_ptr = &start_module;
+  module.handle_finished_ptr = &handle_finish;
+  module.handle_exploded_ptr = &handle_exploded;
 
   pinMode(Button_red, INPUT_PULLUP);
   pinMode(Button_green, INPUT_PULLUP);
@@ -67,15 +71,18 @@ void setup() {
   pinMode(Led_green, OUTPUT);
   pinMode(Led_blue, OUTPUT);
   pinMode(Led_yellow, OUTPUT);
+  pinMode(Led_finisch, OUTPUT);
 
   digitalWrite(Led_red, LOW);
   digitalWrite(Led_green, LOW);
   digitalWrite(Led_blue, LOW);
   digitalWrite(Led_yellow, LOW);
+  digitalWrite(Led_finisch, LOW);
 }
 
 
 void loop() {
+  if(module.get_status() == Module::STATUS::RUNNING)
   for (int i = 0; i <= 3; i++) {
     switch(sequenz[i]) {
       case Color::Red:
@@ -106,6 +113,7 @@ void reset_module() {
   digitalWrite(Led_green, LOW);
   digitalWrite(Led_blue, LOW);
   digitalWrite(Led_yellow, LOW);
+  digitalWrite(Led_finisch, LOW);
 }
 
 void init_module() {
@@ -125,6 +133,24 @@ void init_module() {
 
 void start_module() {
   // TODO
+}
+
+void handle_finish() {
+  Serial.println("Finished !");
+  digitalWrite(Led_red, LOW);
+  digitalWrite(Led_green, LOW);
+  digitalWrite(Led_blue, LOW);
+  digitalWrite(Led_yellow, LOW);
+  digitalWrite(Led_finisch, HIGH);
+}
+
+void handle_exploded() {
+  Serial.println("Exploded !");
+  digitalWrite(Led_red, LOW);
+  digitalWrite(Led_green, LOW);
+  digitalWrite(Led_blue, LOW);
+  digitalWrite(Led_yellow, LOW);
+  digitalWrite(Led_finisch, LOW);
 }
 
 
