@@ -31,6 +31,7 @@ uint8_t Module::get_strike_count() const {
 
 void Module::update_status(STATUS new_status) {
     Wire.write((uint8_t)new_status);
+    this->status = new_status;
 }
 
 Module::STATUS Module::get_status() const {

@@ -5,6 +5,7 @@ enum DEVICE {
   DEVICE_1 = 1,
   SIMONSAY,
   MORSE,
+  VENTINGGAS,
   DEVICE_N
 };
 

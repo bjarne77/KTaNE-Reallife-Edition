@@ -66,7 +66,8 @@ void setup() {
 
   // generate serial number
   const bool has_vowels = random(0,2);
-  generate_serial_number(serial_number, has_vowels);
+  const bool has_odd = random(0,2);
+  generate_serial_number(serial_number, has_vowels, has_odd);
   for(int i = 0; i < DEVICE::DEVICE_N && has_vowels; i++) {
     if(found[i]) {
       sendCommand(i, Module::CMD::HAS_VOWELS);
@@ -74,7 +75,7 @@ void setup() {
     }
   }
   if(containsOddDigit(serial_number)) {
-    for(int i = 0; i < DEVICE::DEVICE_N && has_vowels; i++) {
+    for(int i = 0; i < DEVICE::DEVICE_N && has_odd; i++) {
       if(found[i]) {
         sendCommand(i, Module::CMD::HAS_ODD);
         readResponse(i);
@@ -291,7 +292,7 @@ void sendCommand(const int address, const Module::CMD cmd) {
 
 uint8_t readResponse(int address) {
   delay(50); // Kleine Pause für den Slave
-  Wire.requestFrom(address, 1); // max 20 Bytes
+  Wire.requestFrom(address, 1); // max 1 Bytes
 
   uint8_t response = 0;
   while (Wire.available()) {

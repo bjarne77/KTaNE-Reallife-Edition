@@ -24,54 +24,58 @@ void serialnumber_write2(char* str) {
   DOG.string(str);          //show String
 }
 
-void generate_serial_number(char *output, bool allowVowels) {
+void generate_serial_number(char *output, bool hasVowels, bool hasOdd) {
     const static char *vowels = "AEIOU";
     const static char *consonants = "BCDFGHJKLMNPQRSTVWXYZ";
     const static char *digits = "0123456789";
+    const static char *oddNumbers = "13579";
+    const static char *evenNumbers = "2468";
 
     static char letters[27]; // max 26 letters + null terminator
     letters[0] = '\0';
 
     // Build allowed letters
-    if (allowVowels) {
+    if (hasVowels) {
         strcpy(letters, consonants);
-        strcat(letters, vowels);
+        strcat(letters + strlen(consonants), vowels);
     } else {
         strcpy(letters, consonants);
     }
 
-    size_t numLetters = strlen(letters);
-    size_t numDigits = strlen(digits);
+    const size_t numLetters = strlen(letters);
+    const size_t numDigits = strlen(digits);
+    const size_t numVowels = strlen(vowels);
 
     char temp[9]; // 8 chars + null terminator
-    bool hasLetter = false;
-    bool hasDigit = false;
 
-    // Ensure at least one letter and one digit
-    temp[0] = letters[random(0, numLetters)];
-    temp[1] = digits[random(0, numDigits)];
-    hasLetter = true;
-    hasDigit = true;
+    if(hasVowels) {
+        temp[0] = vowels[random(0, numVowels)];
+    }
 
     // Fill the rest randomly
-    for (int i = 2; i < 8; i++) {
-        if (random(0, 2) == 0) { // 50% chance
+    for (int i = 1; i < 7; i++) {
+        if (random(0, 5) == 0) { // 75% chance
             temp[i] = letters[random(0, numLetters)];
-            hasLetter = true;
         } else {
             temp[i] = digits[random(0, numDigits)];
-            hasDigit = true;
         }
     }
 
     temp[8] = '\0';
 
     // Shuffle result to make positions random
-    for (int i = 7; i > 0; i--) {
+    for (int i = 6; i > 0; i--) {
         int j = random(0, i+1);
         char tmp = temp[i];
         temp[i] = temp[j];
         temp[j] = tmp;
+    }
+
+    // make sure the last digit is a number
+    if(hasOdd) {
+        temp[7] = oddNumbers[random(0, strlen(oddNumbers))];
+    } else {
+        temp[7] = evenNumbers[random(0, strlen(evenNumbers))];
     }
 
     strcpy(output, temp);
