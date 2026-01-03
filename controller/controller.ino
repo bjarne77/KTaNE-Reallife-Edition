@@ -92,30 +92,38 @@ void loop() {
   static uint8_t num_success;
   num_success = 0;
 
+  // Request the current stsatus from the nodes
   for(int i = 0; i < DEVICE::DEVICE_N; i++) {
     if(found[i]) {
       sendCommand(i, Module::CMD::STATUS_UPDATE);
       const Module::STATUS module_status = (Module::STATUS)readResponse(i);
-      // Serial.print("Status from Node ");
-      // Serial.print(i);
-      // Serial.print(":  ");
-      // Serial.println(module_status);
 
-      if(status == Module::STATUS::RUNNING && module_status == Module::STATUS::FAILED) {
-        new_status = Module::STATUS::FAILED;
-      } else if(status == Module::STATUS::RUNNING && module_status == Module::STATUS::NEW_STRIKE) {
-        strikes++;
-        if(strikes >= 3) {
-          new_status = Module::STATUS::FAILED;
-        } else {
-          new_status = Module::STATUS::NEW_STRIKE;
-          Serial.print("Got new Strike from Device ");
-          Serial.println(i);
+      if(status == Module::STATUS::RUNNING) {
+        switch(module_status) {
+          case Module::STATUS::FAILED:
+            new_status = Module::STATUS::FAILED;
+            break;
+
+          case Module::STATUS::NEW_STRIKE:
+            strikes++;
+            if(strikes >= 3) {
+              new_status = Module::STATUS::FAILED;
+            } else {
+              new_status = Module::STATUS::NEW_STRIKE;
+              Serial.print("Got new Strike from Device ");
+              Serial.println(i);
+            }
+            break;
+
+          case Module::STATUS::SUCCESS:
+            Serial.print("Got Success from Device "); 
+            Serial.println(i);
+            num_success++;
+            break;
+
+          default:
+            break;
         }
-      } else if(status == Module::STATUS::RUNNING && module_status == Module::STATUS::SUCCESS) {
-        Serial.print("Got Success from Device "); 
-        Serial.println(i);
-        num_success++;
       }
     }
   }
