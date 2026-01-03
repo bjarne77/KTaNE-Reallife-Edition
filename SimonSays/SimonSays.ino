@@ -228,6 +228,7 @@ int checking(int pressed_button, Color matrix[3][4]) {
     }
   } else {
     solved_state = 0;
+    Serial.println("New Strike");
     module.update_status(Module::STATUS::NEW_STRIKE);
   }
 
