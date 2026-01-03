@@ -23,11 +23,20 @@ char timer_buf[6] = {0};
 #define TIMER_MIN (3)
 #define TIMER_MAX (10)
 
+const int led_strike_1 = 2;
+const int led_strike_2 = 3;
+
 void setup() {
   randomSeed(analogRead(A0));
   Wire.begin();        // join i2c bus (address optional for master)
   Serial.begin(9600);  // start serial for output
+  
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(led_strike_1, OUTPUT);
+  pinMode(led_strike_2, OUTPUT);
+
+  digitalWrite(led_strike_1, LOW);
+  digitalWrite(led_strike_2, LOW);
 
   serialnumber_init();
   serialnumber_write("Boot....");
@@ -91,7 +100,7 @@ void setup() {
   Serial.print("Serial Nr:");
   Serial.println(serial_number);
 
-  timer = random(TIMER_MIN, TIMER_MAX)*10*1000 + millis(); // time in ms
+  timer = random(TIMER_MIN, TIMER_MAX)*60*1000 + millis(); // time in ms
   timer2str(timer - millis(), timer_buf);
   serialnumber_write2(timer_buf);
 
@@ -203,6 +212,18 @@ void loop() {
   } else {
     serialnumber_write2(""); // clear timer
   }
+
+
+  // show strikes
+  digitalWrite(led_strike_1, LOW);
+  digitalWrite(led_strike_2, LOW);
+  if(strikes >= 1) {
+    digitalWrite(led_strike_1, HIGH);
+  }
+  if(strikes >= 2) {
+    digitalWrite(led_strike_2, HIGH);
+  }
+
 
 
   delay(100);
