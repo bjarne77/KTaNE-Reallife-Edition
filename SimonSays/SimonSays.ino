@@ -62,9 +62,9 @@ void setup() {
 
   Serial.println("Hello2");
 
-  pinMode(Button_red, INPUT);
-  pinMode(Button_green, INPUT);
-  pinMode(Button_blue, INPUT);
+  pinMode(Button_red, INPUT_PULLUP);
+  pinMode(Button_green, INPUT_PULLUP);
+  pinMode(Button_blue, INPUT_PULLUP);
   pinMode(Button_yellow, INPUT);
   
   pinMode(Led_red, OUTPUT);
