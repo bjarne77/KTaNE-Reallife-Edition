@@ -7,15 +7,15 @@
 
 Module module;
 
-const int Button_red = 2;
-const int Button_blue = 3;
-const int Button_green = 4;
-const int Button_yellow = 5;
+const int Button_red = 3;
+const int Button_blue = 2;
+const int Button_green = 5;
+const int Button_yellow = 4;
 
-const int Led_red = 6;
-const int Led_blue = 7;
-const int Led_green = 8;
-const int Led_yellow = 9;
+const int Led_red = 7;
+const int Led_blue = 6;
+const int Led_green = 9;
+const int Led_yellow = 8;
 
 int buttons[4] = {Button_red, Button_blue, Button_green, Button_yellow};
 bool lastButtonState[4] = {LOW, LOW, LOW, LOW};
@@ -53,19 +53,15 @@ void setup() {
   randomSeed(analogRead(0));
   Serial.begin(9600);
 
-  Serial.println("Hello");
-
   module.init(DEVICE);
   module.handle_reset_ptr = &reset_module;
   module.handle_init_ptr = &init_module;
   module.handle_start_ptr = &start_module;
 
-  Serial.println("Hello2");
-
   pinMode(Button_red, INPUT_PULLUP);
   pinMode(Button_green, INPUT_PULLUP);
   pinMode(Button_blue, INPUT_PULLUP);
-  pinMode(Button_yellow, INPUT);
+  pinMode(Button_yellow, INPUT_PULLUP);
   
   pinMode(Led_red, OUTPUT);
   pinMode(Led_green, OUTPUT);
@@ -81,24 +77,26 @@ void setup() {
 
 void loop() {
   for (int i = 0; i <= 3; i++) {
-      if (sequenz[i] == 1) {
-        foo(Led_red);
-      }
-      else if (sequenz[i] == 2) {
-        foo(Led_blue);
-      }
-      else if (sequenz[i] == 3) {
-        foo(Led_green);
-      }
-      else if (sequenz[i] == 4) {
-        foo(Led_yellow);
-      }
+    switch(sequenz[i]) {
+      case Color::Red:
+        blink_and_test(Led_red);
+        break;
+      case Color::Blue:
+        blink_and_test(Led_blue);
+        break;
+      case Color::Green:
+        blink_and_test(Led_green);
+        break;
+      case Color::Yellow:
+        blink_and_test(Led_yellow);
+        break;
     }
-    long current_time = millis();
-      while (millis() <= current_time + sequenz_break) {
-        test_button ();
-        delay(entprell_delay);
-      }
+  }
+  long current_time = millis();
+  while (millis() <= current_time + sequenz_break) {
+    test_button ();
+    delay(entprell_delay);
+  }
 }
 
 
@@ -134,7 +132,7 @@ void test_button() {
   for (int i = 0; i < 4; i++) {
     int currentState = digitalRead(buttons[i]);
     
-    // Prüfe auf steigende Flanke: LOW -> HIGH
+    // Prüfe auf fallende Flanke: LOW -> HIGH
     if (currentState == HIGH && lastButtonState[i] == LOW) {
       checking(buttons[i]);
     }
@@ -144,7 +142,7 @@ void test_button() {
   }
 }
 
-void foo(const int led) {
+void blink_and_test(const int led) {
   digitalWrite(led, HIGH);
   long current_time = millis();
   while (millis() <= current_time + light_on) {
@@ -161,13 +159,13 @@ void foo(const int led) {
 
 const char* color2name(const int color) {
   switch(color) {
-    case 0:
+    case Color::Red:
       return "red";
-    case 1:
+    case Color::Blue:
       return "blue";
-    case 2:
+    case Color::Green:
       return "green";
-    case 3:
+    case Color::Yellow:
       return "yellow";
     default:
       return "undef";
